@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Document Database Viewer</title>
+
+<style>
+    *{
+        box-sizing:border-box;
+        margin:0;
+        padding:0;
+    }
+
+    :root{
+        --border:#d9d9d9;
+        --header:#f5f5f5;
+        --bg:#ffffff;
+        --text:#222;
+        --muted:#666;
+
+        --ai:#dbeafe;
+        --inis:#dcfce7;
+        --inbs:#fef3c7;
+        --hsin:#fce7f3;
+        --pkbm:#ede9fe;
+    }
+
+    body{
+        font-family: Arial, Helvetica, sans-serif;
+        background:var(--bg);
+        color:var(--text);
+        height:100vh;
+        overflow:hidden;
+        font-size:12px;
+    }
+
+    .app{
+        display:flex;
+        flex-direction:column;
+        height:100vh;
+        width:100vw;
+    }
+
+    .toolbar{
+        padding:8px;
+        border-bottom:1px solid var(--border);
+        background:#fff;
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+        align-items:center;
+    }
+
+    .toolbar input,
+    .toolbar select{
+        padding:6px 8px;
+        border:1px solid var(--border);
+        border-radius:4px;
+        font-size:12px;
+        min-height:34px;
+    }
+
+    .toolbar input{
+        flex:1;
+        min-width:180px;
+    }
+
+    .table-wrapper{
+        flex:1;
+        overflow:auto;
+        position:relative;
+    }
+
+    table{
+        border-collapse:separate;
+        border-spacing:0;
+        min-width:1200px;
+        width:max-content;
+        background:#fff;
+    }
+
+    th, td{
+        border-right:1px solid var(--border);
+        border-bottom:1px solid var(--border);
+        padding:6px 8px;
+        text-align:left;
+        vertical-align:top;
+        white-space:nowrap;
+        background:#fff;
+    }
+
+    th{
+        position:sticky;
+        top:0;
+        z-index:30;
+        background:var(--header);
+        font-weight:600;
+    }
+
+    /* Freeze first 3 columns */
+    th:nth-child(1),
+    td:nth-child(1){
+        position:sticky;
+        left:0;
+        z-index:20;
+        background:#fff;
+        min-width:50px;
+        max-width:50px;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2){
+        position:sticky;
+        left:50px;
+        z-index:20;
+        background:#fff;
+        min-width:90px;
+        max-width:90px;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3){
+        position:sticky;
+        left:140px;
+        z-index:20;
+        background:#fff;
+        min-width:240px;
+        max-width:240px;
+    }
+
+    th:nth-child(1),
+    th:nth-child(2),
+    th:nth-child(3){
+        z-index:40;
+        background:var(--header);
+    }
+
+    td.title-cell{
+        min-width:420px;
+        max-width:420px;
+        white-space:normal;
+        line-height:1.4;
+    }
+
+    .doc-link{
+        color:#0f52ba;
+        text-decoration:none;
+        font-weight:500;
+    }
+
+    .doc-link:hover{
+        text-decoration:underline;
+    }
+
+    .disabled-title{
+        color:var(--muted);
+    }
+
+    .pdf-btn{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding:4px 8px;
+        border-radius:4px;
+        background:#ef4444;
+        color:#fff;
+        text-decoration:none;
+        font-size:11px;
+        font-weight:bold;
+    }
+
+    .user-tags{
+        display:flex;
+        flex-wrap:wrap;
+        gap:4px;
+        max-width:200px;
+    }
+
+    .tag{
+        padding:2px 6px;
+        border-radius:999px;
+        font-size:10px;
+        line-height:1.5;
+        font-weight:600;
+    }
+
+    .AI{ background:var(--ai); }
+    .INIS{ background:var(--inis); }
+    .INBS{ background:var(--inbs); }
+    .HSIN{ background:var(--hsin); }
+    .PKBM{ background:var(--pkbm); }
+
+    .loading{
+        padding:20px;
+    }
+
+    @media (max-width:768px){
+
+        body{
+            font-size:11px;
+        }
+
+        .toolbar{
+            gap:4px;
+            padding:6px;
+        }
+
+        .toolbar input,
+        .toolbar select{
+            font-size:11px;
+            min-height:32px;
+        }
+
+        td.title-cell{
+            min-width:280px;
+            max-width:280px;
+        }
+
+        table{
+            min-width:1000px;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <div class="toolbar">
+
+        <input
+            type="text"
+            id="searchInput"
+            placeholder="Search title, category, doc number, or user..."
+        />
+
+        <select id="userFilter">
+            <option value="">All Users</option>
+            <option value="AI">AI</option>
+            <option value="INIS">INIS</option>
+            <option value="INBS">INBS</option>
+            <option value="HSIN">HSIN</option>
+            <option value="PKBM">PKBM</option>
+        </select>
+
+        <select id="categoryFilter">
+            <option value="">All Categories</option>
+        </select>
+
+        <select id="sortDate">
+            <option value="newest">Newest Date</option>
+            <option value="oldest">Oldest Date</option>
+        </select>
+
+    </div>
+
+    <div class="table-wrapper">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Category</th>
+                    <th>Document</th>
+                    <th>Document Title (Click Title to View Document)</th>
+                    <th>PDF</th>
+                    <th>Status Period</th>
+                    <th>User</th>
+                </tr>
+            </thead>
+
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="7" class="loading">
+                        Loading data...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+const ENDPOINT =
+'https://opensheet.elk.sh/18vIyTo366EkSMWGnHyXjaqn1HSTvv3FZeNnTBclpt5w/_EXPORT';
+
+let allData = [];
+
+const tableBody = document.getElementById('tableBody');
+const searchInput = document.getElementById('searchInput');
+const userFilter = document.getElementById('userFilter');
+const categoryFilter = document.getElementById('categoryFilter');
+const sortDate = document.getElementById('sortDate');
+
+async function loadData(){
+
+    try{
+
+        const response = await fetch(ENDPOINT);
+        const data = await response.json();
+
+        allData = data.sort((a,b) =>
+            Number(a.number || 0) - Number(b.number || 0)
+        );
+
+        populateCategoryFilter(allData);
+
+        renderTable();
+
+    }catch(error){
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="10">
+                    Failed to load data
+                </td>
+            </tr>
+        `;
+
+        console.error(error);
+    }
+}
+
+function populateCategoryFilter(data){
+
+    const categories = [...new Set(
+        data.map(item => item.category).filter(Boolean)
+    )];
+
+    categories.sort();
+
+    categories.forEach(category => {
+
+        const option = document.createElement('option');
+
+        option.value = category;
+        option.textContent = category;
+
+        categoryFilter.appendChild(option);
+    });
+}
+
+function getUsers(item){
+
+    const users = [];
+
+    if(item['user-ai'] === 'TRUE') users.push('AI');
+    if(item['user-inis'] === 'TRUE') users.push('INIS');
+    if(item['user-inbs'] === 'TRUE') users.push('INBS');
+    if(item['user-hsin'] === 'TRUE') users.push('HSIN');
+    if(item['user-pbkm'] === 'TRUE') users.push('PKBM');
+
+    return users;
+}
+
+function renderTable(){
+
+    const keyword =
+        searchInput.value.toLowerCase().trim();
+
+    const selectedUser =
+        userFilter.value;
+
+    const selectedCategory =
+        categoryFilter.value;
+
+    const sortType =
+        sortDate.value;
+
+    let filtered = [...allData];
+
+    filtered = filtered.filter(item => {
+
+        const users = getUsers(item);
+
+        const searchable = `
+            ${item['doc-title'] || ''}
+            ${item['category'] || ''}
+            ${item['doc-number'] || ''}
+            ${users.join(' ')}
+            ${item['status'] || ''}
+        `.toLowerCase();
+
+        const matchSearch =
+            searchable.includes(keyword);
+
+        const matchUser =
+            !selectedUser ||
+            users.includes(selectedUser);
+
+        const matchCategory =
+            !selectedCategory ||
+            item.category === selectedCategory;
+
+        return (
+            matchSearch &&
+            matchUser &&
+            matchCategory
+        );
+    });
+
+    filtered.sort((a,b) => {
+
+        const dateA =
+            new Date(a['publish-date'] || 0);
+
+        const dateB =
+            new Date(b['publish-date'] || 0);
+
+        return sortType === 'newest'
+            ? dateB - dateA
+            : dateA - dateB;
+    });
+
+    if(filtered.length === 0){
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="10">
+                    No data found
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tableBody.innerHTML = filtered.map(item => {
+
+        const users = getUsers(item);
+
+        const hasPdf =
+            item['pdf-link'] &&
+            item['pdf-link'].trim() !== '';
+
+        const hasRaw =
+            item['raw-link'] &&
+            item['raw-link'].trim() !== '';
+
+        const titleClickable = hasPdf;
+
+        const editDocument = hasRaw;
+
+        const viewLink = item['pdf-link'];
+
+    return `
+
+    <tr>
+
+        <td>
+            ${item.number || '-'}
+        </td>
+
+        <td>
+            ${item.category || '-'}
+        </td>
+
+        <td>
+            <div>
+                <strong>Number:</strong>
+                ${item['doc-number'] || '-'}            
+            </div>
+            <div>
+                <strong>Publish Date:</strong>
+                ${item['publish-date'] || '-'}
+            </div>
+
+        </td>
+
+        <td class="title-cell">
+
+            ${
+                titleClickable
+                ? `
+                    <a
+                        class="doc-link"
+                        href="${viewLink}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        ${item['doc-title'] || '-'}
+                    </a>
+                `
+                : `
+                    <span class="disabled-title">
+                        ${item['doc-title'] || '-'}
+                    </span>
+                `
+            }
+
+            ${
+                editDocument ? `<a class="doc-link" href="${item['raw-link']}">✏</a>` : ''
+            }
+
+        </td>
+
+        <td>
+
+            ${
+                hasPdf
+                ? `
+                    <a
+                        class="pdf-btn"
+                        href="${item['pdf-link']}"
+                        target="_blank"
+                    >
+                        PDF
+                    </a>
+                `
+                : ''
+            }
+
+        </td>
+
+        <td style="white-space:normal; min-width:180px; line-height:1.4;">
+
+            <div>
+                <strong>Status:</strong>
+                ${item['status'] || '-'}
+            </div>
+
+            <div>
+                <strong>Effective:</strong>
+                ${item['effective-date'] || '-'}
+            </div>
+
+            <div>
+                <strong>Expiration:</strong>
+                ${item['expiration-date'] || '-'}
+            </div>
+
+        </td>
+
+        <td>
+
+            <div class="user-tags">
+
+                ${
+                    users.map(user => `
+                        <span class="tag ${user}">
+                            ${user}
+                        </span>
+                    `).join('')
+                }
+
+            </div>
+
+        </td>
+
+    </tr>
+
+`;
+
+    }).join('');
+}
+
+searchInput.addEventListener(
+    'input',
+    renderTable
+);
+
+userFilter.addEventListener(
+    'change',
+    renderTable
+);
+
+categoryFilter.addEventListener(
+    'change',
+    renderTable
+);
+
+sortDate.addEventListener(
+    'change',
+    renderTable
+);
+
+loadData();
+
+</script>
+
+</body>
+</html>
