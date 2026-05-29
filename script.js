@@ -153,6 +153,8 @@ function renderTable(){
             item['raw-link'] &&
             item['raw-link'].trim() !== '';
 
+        const hasDoc = item['doc-link'];
+
         const titleClickable = hasPdf;
 
         const editDocument = hasRaw;
@@ -216,7 +218,7 @@ function renderTable(){
                 hasPdf
                 ? `
                     <a
-                        class="pdf-btn"
+                        class="dl-btn pdf-btn"
                         href="${item['pdf-link']}"
                         target="_blank"
                     >
@@ -225,6 +227,19 @@ function renderTable(){
                 `
                 : ''
             }
+
+            ${hasDoc
+                ? `
+                    <a
+                        class="dl-btn doc-btn"
+                        href="${item['raw-link']}"
+                        target="_blank"
+                    >
+                        Doc
+                    </a>
+                `
+                : ''
+             }
 
         </td>
 

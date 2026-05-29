@@ -149,7 +149,7 @@ td.title-cell{
     color:var(--muted);
 }
 
-.pdf-btn{
+.dl-btn{
     display:inline-flex;
     align-items:center;
     justify-content:center;
@@ -160,6 +160,14 @@ td.title-cell{
     text-decoration:none;
     font-size:11px;
     font-weight:bold;
+}
+
+.pdf-btn{
+    background:#ef4444;
+}
+
+.doc-btn{
+    background:#1d46ff;
 }
 
 .user-tags{
