@@ -153,7 +153,7 @@ function renderTable(){
             item['raw-link'] &&
             item['raw-link'].trim() !== '';
 
-        const hasDoc = item['doc-link'];
+        const hasDoc = item['doc-link'] === 'TRUE';
 
         const titleClickable = hasPdf;
 
